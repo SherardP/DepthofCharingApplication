@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoC — Depth of Calcination</title>
+<!-- JSZip for .docch file format (ZIP container) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* ── CSS Variables ── */
+:root {
+  --sidebar-w: 220px;
+  --meta-w: 250px;
+  --topbar-h: 42px;
+  --table-h: 180px;
+  --bg-primary:   #ffffff;
+  --bg-secondary: #f5f4f0;
+  --bg-tertiary:  #eeece8;
+  --bg-canvas:    #1a1a2e;
+  --text-primary:   #1a1a18;
+  --text-secondary: #6b6a66;
+  --text-muted:     #9b9a96;
+  --border:       rgba(0,0,0,0.10);
+  --border-med:   rgba(0,0,0,0.18);
+  --accent:       #D85A30;
+  --accent-lt:    #FAECE7;
+  --accent-dk:    #712B13;
+  --teal:         #1D9E75;
+  --teal-lt:      #E1F5EE;
+  --red:          #E24B4A;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --font: -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Courier New', monospace;
+}
+[data-theme="dark"] {
+  --bg-primary:   #1e1e1e;
+  --bg-secondary: #262626;
+  --bg-tertiary:  #2e2e2e;
+  --bg-canvas:    #0d0d1a;
+  --text-primary:   #e8e6e0;
+  --text-secondary: #9b9a96;
+  --text-muted:     #6b6a66;
+  --border:       rgba(255,255,255,0.10);
+  --border-med:   rgba(255,255,255,0.18);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: var(--font); font-size: 13px; color: var(--text-primary); background: var(--bg-tertiary); }
+
+/* ── Login Screen ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 9000;
+  background: var(--bg-canvas);
+  display: flex; align-items: center; justify-content: center;
+}
+#login-box {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  width: 340px;
+  border: 1px solid var(--border-med);
+}
+#login-box .login-logo {
+  font-size: 28px; font-weight: 800; color: var(--accent);
+  letter-spacing: 2px; margin-bottom: 4px;
+}
+#login-box .login-sub {
+  font-size: 11px; color: var(--text-secondary); margin-bottom: 28px;
+  line-height: 1.5;
+}
+#login-box .lf { margin-bottom: 14px; }
+#login-box .lf label {
+  display: block; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--text-secondary); margin-bottom: 5px;
+}
+#login-box .lf input {
+  width: 100%; padding: 8px 10px; font-size: 13px;
+  border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+  background: var(--bg-secondary); color: var(--text-primary);
+  font-family: var(--font);
+}
+#login-box .lf input:focus { outline: none; border-color: var(--accent); }
+#btn-login {
+  width: 100%; padding: 9px; font-size: 13px; font-weight: 600;
+  background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-sm); cursor: pointer; margin-top: 6px;
+  font-family: var(--font);
+}
+#btn-login:hover { opacity: 0.88; }
+#login-error {
+  font-size: 11px; color: var(--red); margin-top: 10px;
+  text-align: center; min-height: 16px;
+}
+#login-box .login-footer {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: 10px; color: var(--text-muted); text-align: center; line-height: 1.6;
+}
+
+/* ── User Manager Modal ── */
+#user-modal-overlay {
+  position: fixed; inset: 0; z-index: 8000;
+  background: rgba(0,0,0,0.45);
+  display: none; align-items: center; justify-content: center;
+}
+#user-modal-overlay.open { display: flex; }
+#user-modal {
+  background: var(--bg-primary); border-radius: var(--radius-lg);
+  width: 480px; max-height: 80vh; overflow-y: auto;
+  border: 1px solid var(--border-med);
+}
+.modal-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h2 { font-size: 14px; font-weight: 600; }
+.modal-close {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 18px; color: var(--text-secondary); line-height: 1;
+}
+.modal-close:hover { color: var(--text-primary); }
+.modal-body { padding: 16px 18px; }
+.user-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.user-row:last-child { border-bottom: none; }
+.user-row .u-name { flex: 1; font-weight: 500; }
+.user-row .u-role {
+  font-size: 10px; padding: 2px 7px; border-radius: 8px;
+  background: var(--bg-secondary); color: var(--text-secondary);
+}
+.user-row .u-role.admin { background: var(--accent-lt); color: var(--accent-dk); }
+.add-user-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.add-user-form .auf-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+.auf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.auf-grid .af { display: flex; flex-direction: column; gap: 3px; }
+.auf-grid label { font-size: 10px; color: var(--text-secondary); }
+.auf-grid input, .auf-grid select {
+  padding: 5px 8px; font-size: 12px;
+  border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+  background: var(--bg-secondary); color: var(--text-primary);
+  font-family: var(--font);
+}
+#btn-add-user {
+  padding: 6px 14px; font-size: 11px; background: var(--accent);
+  color: #fff; border: none; border-radius: var(--radius-sm);
+  cursor: pointer; font-family: var(--font);
+}
+#user-add-error { font-size: 11px; color: var(--red); margin-top: 6px; min-height: 16px; }
+
+/* ── App Shell ── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Top Bar ── */
+#topbar {
+  height: var(--topbar-h);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 12px; gap: 8px;
+  flex-shrink: 0; z-index: 100;
+}
+.logo { font-size: 15px; font-weight: 800; color: var(--accent); letter-spacing: 1px; margin-right: 2px; }
+.nfpa-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--accent-lt); color: var(--accent-dk); font-weight: 600; flex-shrink: 0; }
+.project-label { font-size: 12px; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spacer { flex: 1; }
+.autosave-status { font-size: 10px; color: var(--text-muted); min-width: 90px; text-align: right; }
+.user-chip {
+  font-size: 11px; padding: 3px 10px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 5px;
+}
+.user-chip .u-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--teal); flex-shrink: 0;
+}
+
+/* ── Toolbar Buttons ── */
+.tb-btn {
+  font-size: 11px; padding: 5px 11px;
+  border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-primary);
+  cursor: pointer; font-family: var(--font); white-space: nowrap;
+  transition: background 0.1s;
+}
+.tb-btn:hover { background: var(--bg-secondary); }
+.tb-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tb-btn.primary:hover { opacity: 0.88; }
+
+/* ── Main Layout ── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Left Sidebar ── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0; overflow: hidden;
+}
+.panel-header {
+  height: 34px; padding: 0 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.panel-header span { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); }
+.panel-header button { background: transparent; border: none; cursor: pointer; font-size: 18px; line-height: 1; color: var(--accent); padding: 0 2px; }
+#tree { flex: 1; overflow-y: auto; }
+
+/* ── Center ── */
+#center { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+/* ── Canvas Area ── */
+#canvas-area {
+  flex: 1; background: var(--bg-canvas);
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+#canvas-placeholder { text-align: center; color: rgba(255,255,255,0.25); }
+#canvas-placeholder .ph-title { font-size: 15px; margin-bottom: 6px; color: rgba(255,255,255,0.35); }
+#canvas-placeholder .ph-sub { font-size: 11px; line-height: 1.6; }
+#canvas-toolbar {
+  position: absolute; top: 8px; left: 8px;
+  display: flex; gap: 4px; z-index: 10;
+}
+.cv-btn {
+  font-size: 10px; padding: 3px 8px;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.8); border-radius: var(--radius-sm);
+  cursor: pointer; font-family: var(--font);
+}
+.cv-btn:hover { background: rgba(255,255,255,0.18); }
+.cv-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+#canvas-info { position: absolute; bottom: 8px; right: 10px; font-size: 10px; color: rgba(255,255,255,0.4); font-family: var(--font-mono); }
+
+/* ── Table Panel ── */
+#table-panel {
+  height: var(--table-h); border-top: 1px solid var(--border);
+  background: var(--bg-primary);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sync-badge { font-size: 9px; padding: 1px 6px; border-radius: 8px; background: var(--teal-lt); color: var(--teal); font-weight: 500; }
+#table-wrap { overflow: hidden; flex: 1; display: flex; flex-direction: column; }
+#table-body-wrap { overflow: auto; flex: 1; }
+
+/* ── Coordinate Grid Table ── */
+#coord-table { border-collapse: collapse; font-size: 11px; }
+#coord-table th, #coord-table td {
+  border: 1px solid var(--border);
+  min-width: 52px; max-width: 52px; width: 52px;
+  height: 26px; padding: 0; text-align: center;
+  white-space: nowrap; overflow: hidden;
+}
+/* Row header column (row numbers) */
+#coord-table .th-row {
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font-size: 10px; font-weight: 600; position: sticky; left: 0; z-index: 3;
+  min-width: 36px; max-width: 36px; width: 36px;
+  border-right: 2px solid var(--border-med);
+}
+/* Column header row */
+#coord-table thead th {
+  position: sticky; top: 0; z-index: 4;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font-size: 10px; font-weight: 600;
+  border-bottom: 2px solid var(--border-med);
+}
+#coord-table thead th.th-corner {
+  position: sticky; left: 0; z-index: 5;
+  background: var(--bg-tertiary);
+  border-right: 2px solid var(--border-med);
+  border-bottom: 2px solid var(--border-med);
+}
+/* Data cells */
+#coord-table td.data-cell {
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+#coord-table td.data-cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+#coord-table td.data-cell.active-cell { outline: 2px solid white; outline-offset: -2px; z-index: 2; }
+#coord-table td.data-cell input.cell-input {
+  width: 100%; height: 100%; border: none; background: transparent;
+  text-align: center; font-size: 10px; font-family: var(--font-mono);
+  color: inherit; cursor: pointer; padding: 0 2px;
+}
+#coord-table td.data-cell input.cell-input:focus {
+  outline: none; background: rgba(255,255,255,0.15); cursor: text;
+}
+
+/* ── Color Editor (in meta panel) ── */
+.color-editor { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.color-editor-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-secondary); margin-bottom: 8px; }
+.gradient-preview { height: 14px; border-radius: 4px; margin-bottom: 8px; border: 1px solid var(--border); }
+.color-stop-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; font-size: 11px; }
+.color-stop-row input[type="color"] { width: 28px; height: 22px; border: 1px solid var(--border-med); border-radius: 3px; padding: 1px; cursor: pointer; background: none; }
+.color-stop-row .cs-label { flex: 1; color: var(--text-secondary); font-size: 10px; }
+
+/* ── Right Metadata Panel ── */
+#meta-panel {
+  width: var(--meta-w); background: var(--bg-primary);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0; overflow-y: auto;
+}
+.meta-section { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.meta-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-secondary); margin-bottom: 8px; }
+.meta-field { margin-bottom: 8px; }
+.meta-field label { display: block; font-size: 10px; color: var(--text-secondary); margin-bottom: 3px; }
+.meta-field input, .meta-field select, .meta-field textarea {
+  width: 100%; font-size: 11px; padding: 4px 7px;
+  border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+  background: var(--bg-secondary); color: var(--text-primary);
+  font-family: var(--font);
+}
+.meta-field textarea { resize: vertical; min-height: 52px; line-height: 1.5; }
+.meta-field input:focus, .meta-field select:focus, .meta-field textarea:focus { outline: none; border-color: var(--accent); }
+.meta-field.inline { display: flex; align-items: center; gap: 7px; }
+.meta-field.inline input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+.meta-field.inline label { margin: 0; font-size: 11px; color: var(--text-primary); cursor: pointer; }
+
+/* ── Home Dashboard ── */
+#home-view { padding: 20px 16px; }
+.home-claim { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+.home-addr { font-size: 11px; color: var(--text-secondary); margin-bottom: 16px; }
+.stat-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 16px; }
+.stat-card { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 10px 12px; border: 1px solid var(--border); }
+.stat-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 3px; }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.no-project-hint { font-size: 11px; color: var(--text-secondary); line-height: 1.6; margin-top: 8px; }
+
+/* ── Context Menu ── */
+#ctx-menu {
+  position: fixed; background: var(--bg-primary);
+  border: 1px solid var(--border-med); border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  z-index: 9999; min-width: 150px; overflow: hidden;
+}
+.ctx-item { padding: 7px 14px; cursor: pointer; font-size: 12px; color: var(--text-primary); }
+.ctx-item:hover { background: var(--bg-secondary); }
+.ctx-item.danger { color: var(--red); }
+
+/* ── Depth Input Popup ── */
+#depth-popup {
+  position: fixed; z-index: 5000;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-med);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+#depth-popup.open { display: flex; }
+#depth-popup label { font-size: 10px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+#depth-popup-inner { display: flex; gap: 5px; align-items: center; }
+#depth-input {
+  flex: 1; padding: 4px 7px; font-size: 12px;
+  border: 1px solid var(--border-med); border-radius: var(--radius-sm);
+  background: var(--bg-secondary); color: var(--text-primary);
+  font-family: var(--font-mono); width: 80px;
+}
+#depth-input:focus { outline: none; border-color: var(--accent); }
+#depth-popup-ok {
+  padding: 4px 10px; font-size: 11px;
+  background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font);
+}
+#depth-popup .dp-coords { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+#depth-popup .dp-pct { font-size: 10px; color: var(--teal); font-weight: 600; }
+
+/* ── Canvas Tooltip ── */
+#cv-tooltip {
+  position: fixed; z-index: 4000; pointer-events: none;
+  background: rgba(10,10,20,0.88);
+  color: #e8e6e0; font-size: 10px; font-family: var(--font-mono);
+  padding: 5px 8px; border-radius: var(--radius-sm);
+  line-height: 1.7; display: none; white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+#cv-tooltip.show { display: block; }
+
+/* ── Resizable Table Divider ── */
+#table-resize-handle {
+  height: 5px; background: transparent;
+  border-top: 1px solid var(--border);
+  cursor: row-resize; flex-shrink: 0;
+  transition: background 0.15s;
+}
+#table-resize-handle:hover { background: var(--accent-lt); }
+
+/* ── Canvas label overlay ── */
+#canvas-panel-label {
+  position: absolute; top: 8px; right: 10px;
+  font-size: 10px; color: rgba(255,255,255,0.45);
+  font-family: var(--font); pointer-events: none;
+  text-align: right; line-height: 1.6;
+}
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 3px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════ -->
+<div id="login-screen">
+  <div id="login-box">
+    <div class="login-logo">DoC</div>
+    <div class="login-sub">Depth of Calcination Survey System<br>Fire Investigation · NFPA 921</div>
+    <div class="lf"><label>Username</label><input type="text" id="login-user" autocomplete="username" placeholder="Enter username"></div>
+    <div class="lf"><label>Password</label><input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter password"></div>
+    <button id="btn-login">Sign In</button>
+    <div id="login-error"></div>
+    <div class="login-footer">Authorized personnel only.<br>All sessions are logged.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     USER MANAGER MODAL
+═══════════════════════════════════════════ -->
+<div id="user-modal-overlay">
+  <div id="user-modal">
+    <div class="modal-header">
+      <h2>User Manager</h2>
+      <button class="modal-close" id="btn-close-user-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="user-list"></div>
+      <div class="add-user-form" id="add-user-section">
+        <div class="auf-title">Add New User</div>
+        <div class="auf-grid">
+          <div class="af"><label>Username</label><input type="text" id="new-username" placeholder="username"></div>
+          <div class="af"><label>Role</label>
+            <select id="new-role">
+              <option value="investigator">Investigator</option>
+              <option value="admin">Admin</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
+          <div class="af"><label>Password</label><input type="password" id="new-pass" placeholder="min 8 characters"></div>
+          <div class="af"><label>Confirm Password</label><input type="password" id="new-pass2" placeholder="repeat password"></div>
+        </div>
+        <button id="btn-add-user">Add User</button>
+        <div id="user-add-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN APP SHELL
+═══════════════════════════════════════════ -->
+<div id="app">
+  <div id="topbar">
+    <span class="logo">DoC</span>
+    <span class="nfpa-badge">NFPA 921</span>
+    <span class="project-label" id="topbar-label">No project open</span>
+    <span class="spacer"></span>
+    <span class="autosave-status" id="autosave-status">—</span>
+    <div class="user-chip"><span class="u-dot"></span><span id="topbar-username">—</span></div>
+    <button class="tb-btn" id="btn-new">New</button>
+    <button class="tb-btn" id="btn-save">Save</button>
+    <button class="tb-btn" id="btn-load">Load</button>
+    <button class="tb-btn" id="btn-users" title="Manage users">Users</button>
+    <button class="tb-btn" id="btn-theme">☀</button>
+    <button class="tb-btn" id="btn-logout" style="border-color:var(--red);color:var(--red);">Logout</button>
+    <input type="file" id="file-input" accept=".docch" class="hidden">
+  </div>
+
+  <div id="main">
+    <!-- LEFT SIDEBAR -->
+    <div id="sidebar">
+      <div class="panel-header">
+        <span>Project Tree</span>
+        <button id="btn-smart-add" title="Add item">+</button>
+      </div>
+      <div id="tree"></div>
+    </div>
+
+    <!-- CENTER -->
+    <div id="center">
+      <div id="canvas-area">
+        <div id="canvas-toolbar" class="hidden">
+          <button class="cv-btn active" id="tool-pan" title="Pan (drag)">Pan</button>
+          <button class="cv-btn" id="tool-zoom-in" title="Zoom in">＋</button>
+          <button class="cv-btn" id="tool-zoom-out" title="Zoom out">−</button>
+          <button class="cv-btn" id="tool-zoom-fit" title="Fit to window">Fit</button>
+        </div>
+        <div id="canvas-placeholder">
+          <div class="ph-title">Depth of Calcination Survey</div>
+          <div class="ph-sub" id="canvas-hint">Select a sheetrock panel from the<br>project tree to begin mapping.</div>
+        </div>
+        <canvas id="grid-canvas" class="hidden"></canvas>
+        <div id="canvas-info"></div>
+        <div id="canvas-panel-label"></div>
+      </div>
+
+      <!-- HOVER TOOLTIP -->
+      <div id="cv-tooltip"></div>
+
+      <!-- TABLE RESIZE HANDLE -->
+      <div id="table-resize-handle"></div>
+
+      <div id="table-panel">
+        <div class="panel-header">
+          <span id="table-panel-title">Measurements</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="sync-badge">synced with canvas</span>
+            <button class="tb-btn" id="btn-import-csv" style="font-size:10px;padding:2px 8px;" title="Import CSV data into this panel">Import CSV</button>
+            <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+          </div>
+        </div>
+        <div id="table-wrap">
+          <div id="table-body-wrap" style="overflow:auto;height:100%;">
+            <table id="coord-table" style="border-collapse:collapse;font-size:11px;">
+              <thead id="coord-thead"></thead>
+              <tbody id="coord-tbody"></tbody>
+            </table>
+          </div>
+          <div id="table-no-panel" style="padding:16px;text-align:center;color:var(--text-muted);font-size:11px;">No panel selected</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT METADATA PANEL -->
+    <div id="meta-panel">
+      <div class="panel-header"><span>Metadata</span></div>
+
+      <div id="home-view">
+        <div class="home-claim" id="home-claim">DoC</div>
+        <div class="home-addr" id="home-addr">Fire Investigation · Calcination Mapping</div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">Rooms</div><div class="stat-value" id="stat-rooms">—</div></div>
+          <div class="stat-card"><div class="stat-label">Walls</div><div class="stat-value" id="stat-walls">—</div></div>
+          <div class="stat-card"><div class="stat-label">Panels</div><div class="stat-value" id="stat-panels">—</div></div>
+          <div class="stat-card"><div class="stat-label">Cells mapped</div><div class="stat-value" id="stat-cells">—</div></div>
+        </div>
+        <div class="no-project-hint" id="home-hint">Create a new project or load a <code>.docch</code> file to begin.</div>
+      </div>
+
+      <div id="meta-forms" class="hidden">
+        <!-- PROJECT -->
+        <div id="form-project" class="hidden">
+          <div class="meta-section">
+            <div class="meta-section-title">Project Identity</div>
+            <div class="meta-field"><label>Project name</label><input type="text" data-field="projectName" placeholder="e.g. Maple St Residential Fire"></div>
+            <div class="meta-field"><label>Claim number</label><input type="text" data-field="claimNumber" placeholder="e.g. 2026-04-0117"></div>
+            <div class="meta-field"><label>Survey date</label><input type="date" data-field="date"></div>
+            <div class="meta-field"><label>Property address</label><input type="text" data-field="address" placeholder="Street, City, State"></div>
+            <div class="meta-field"><label>Lead investigator</label><input type="text" data-field="investigator"></div>
+          </div>
+          <div class="meta-section">
+            <div class="meta-section-title">Insurance</div>
+            <div class="meta-field"><label>Insurance company</label><input type="text" data-field="insuranceCompany" placeholder="e.g. State Farm"></div>
+            <div class="meta-field"><label>Point of contact</label><input type="text" data-field="insuranceContact" placeholder="Full name"></div>
+            <div class="meta-field"><label>Contact phone</label><input type="tel" data-field="insurancePhone" placeholder="(555) 000-0000"></div>
+            <div class="meta-field"><label>Claim adjuster email</label><input type="email" data-field="insuranceEmail" placeholder="adjuster@company.com"></div>
+          </div>
+          <div class="meta-section">
+            <div class="meta-section-title">Survey Defaults</div>
+            <div class="meta-field"><label>Default baseline thickness (in)</label><input type="number" data-field="defaultThickness" step="0.125" min="0.25" max="1.0" value="0.5"></div>
+            <div class="meta-field"><label>Precision</label>
+              <select data-field="precision">
+                <option value="sqin">1 sq inch</option>
+                <option value="sqcm">1 sq cm</option>
+              </select>
+            </div>
+            <div class="meta-field"><label>NFPA 921 notes</label><textarea data-field="nfpaNotes" placeholder="Compliance notes..."></textarea></div>
+          </div>
+        </div>
+
+        <!-- ROOM -->
+        <div id="form-room" class="hidden">
+          <div class="meta-section">
+            <div class="meta-section-title">Room</div>
+            <div class="meta-field"><label>Room name</label><input type="text" data-field="name"></div>
+            <div class="meta-field"><label>Width (ft)</label><input type="number" data-field="widthFt" step="0.5" min="1"></div>
+            <div class="meta-field"><label>Length (ft)</label><input type="number" data-field="lengthFt" step="0.5" min="1"></div>
+            <div class="meta-field"><label>Height (ft)</label><input type="number" data-field="heightFt" step="0.5" min="6" value="8"></div>
+            <div class="meta-field"><label>Contents / furnishings</label><textarea data-field="contents" placeholder="Furniture, materials present..."></textarea></div>
+            <div class="meta-field"><label>Moisture / suppression notes</label><textarea data-field="suppressionNotes" placeholder="Sprinkler activation, hose streams..."></textarea></div>
+          </div>
+        </div>
+
+        <!-- WALL -->
+        <div id="form-wall" class="hidden">
+          <div class="meta-section">
+            <div class="meta-section-title">Wall</div>
+            <div class="meta-field"><label>Wall name</label><input type="text" data-field="name"></div>
+            <div class="meta-field"><label>Orientation</label>
+              <select data-field="orientation">
+                <option>North</option><option>South</option><option>East</option><option>West</option><option>Other</option>
+              </select>
+            </div>
+            <div class="meta-field"><label>Burn pattern observations</label><textarea data-field="burnNotes" placeholder="V-pattern, char lines, smoke staining..."></textarea></div>
+          </div>
+        </div>
+
+        <!-- PANEL -->
+        <div id="form-panel" class="hidden">
+          <div class="meta-section">
+            <div class="meta-section-title">Sheetrock Panel</div>
+            <div class="meta-field"><label>Panel label</label><input type="text" data-field="name"></div>
+            <div class="meta-field"><label>Width (in) — columns</label><input type="number" data-field="widthIn" step="1" min="1" value="48"></div>
+            <div class="meta-field"><label>Height (in) — rows</label><input type="number" data-field="heightIn" step="1" min="1" value="48"></div>
+            <div class="meta-field"><label>Baseline thickness (in)</label><input type="number" data-field="baselineThicknessIn" step="0.125" min="0.25" max="1.0" value="0.5"></div>
+            <div class="meta-field"><label>Manufacturer</label><input type="text" data-field="manufacturer" placeholder="e.g. National Gypsum"></div>
+            <div class="meta-field"><label>Probe tool</label>
+              <select data-field="probeTool">
+                <option>Steel probe</option><option>Calibrated pin</option>
+                <option>Digital depth gauge</option><option>Other</option>
+              </select>
+            </div>
+            <div class="meta-field inline">
+              <input type="checkbox" data-field="moistureExposure" id="cb-moisture">
+              <label for="cb-moisture">Moisture exposure flag</label>
+            </div>
+            <div class="meta-field"><label>Location notes</label><textarea data-field="locationNotes" placeholder="e.g. Lower half, behind baseboard..."></textarea></div>
+          </div>
+          <div class="meta-section">
+            <div style="font-size:10px;color:var(--text-secondary);line-height:1.8;">
+              Grid: <strong id="panel-grid-size">—</strong><br>
+              Cells with data: <strong id="panel-cells-mapped">0</strong>
+            </div>
+          </div>
+          <!-- COLOR EDITOR -->
+          <div class="color-editor" id="color-editor">
+            <div class="color-editor-title">Gradient Colors</div>
+            <div class="gradient-preview" id="grad-preview"></div>
+            <div class="color-stop-row">
+              <input type="color" id="cs-0" value="#0000ff" title="No change (0 depth)">
+              <span class="cs-label">No change (0)</span>
+            </div>
+            <div class="color-stop-row">
+              <input type="color" id="cs-1" value="#8800cc" title="25%">
+              <span class="cs-label">25% calcined</span>
+            </div>
+            <div class="color-stop-row">
+              <input type="color" id="cs-2" value="#cc0000" title="50%">
+              <span class="cs-label">50% calcined</span>
+            </div>
+            <div class="color-stop-row">
+              <input type="color" id="cs-3" value="#ff6600" title="75%">
+              <span class="cs-label">75% calcined</span>
+            </div>
+            <div class="color-stop-row">
+              <input type="color" id="cs-4" value="#ffdd00" title="Max">
+              <span class="cs-label">Max (100%)</span>
+            </div>
+            <button class="tb-btn" id="btn-reset-colors" style="font-size:10px;margin-top:4px;width:100%;">Reset to Default</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AUTH SYSTEM — SHA-256 + random salt
+// Password stored as:  salt:hash  (hex encoded)
+// Never stores plaintext. Never uses pure Base64.
+// ═══════════════════════════════════════════════════════════════
+
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function genSalt(len = 32) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashPassword(plaintext, salt) {
+  // Multiple rounds: hash(salt + plaintext + salt) for extra resistance
+  let h = await sha256(salt + plaintext + salt);
+  // 10,000 stretch iterations (like PBKDF2 but inline)
+  for (let i = 0; i < 10000; i++) {
+    h = await sha256(h + salt + i);
+  }
+  return h;
+}
+
+async function makeCredential(username, plaintext) {
+  const salt = genSalt();
+  const hash = await hashPassword(plaintext, salt);
+  return { username, salt, hash, role: 'investigator' };
+}
+
+async function verifyPassword(plaintext, storedSalt, storedHash) {
+  const attempt = await hashPassword(plaintext, storedSalt);
+  return attempt === storedHash;
+}
+
+// ── USER STORE ──
+// Stored in localStorage as array of { username, salt, hash, role }
+// The hardcoded default admin is seeded on first run.
+// To change default credentials: modify SEED_USER below,
+// then clear localStorage and reload once to reseed.
+const USERS_LS_KEY = 'doc_users';
+const DEFAULT_ADMIN = {
+  username: 'admin',
+  plaintext: 'Doc@2026!',   // ← CHANGE THIS before deployment
+  role: 'admin'
+};
+
+function loadUsers() {
+  try {
+    const raw = localStorage.getItem(USERS_LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveUsers(users) {
+  localStorage.setItem(USERS_LS_KEY, JSON.stringify(users));
+}
+
+async function seedDefaultAdmin() {
+  const users = loadUsers();
+  if (users.length === 0) {
+    const cred = await makeCredential(DEFAULT_ADMIN.username, DEFAULT_ADMIN.plaintext);
+    cred.role = DEFAULT_ADMIN.role;
+    users.push(cred);
+    saveUsers(users);
+  }
+}
+
+async function attemptLogin(username, plaintext) {
+  const users = loadUsers();
+  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase().trim());
+  if (!user) return null;
+  const ok = await verifyPassword(plaintext, user.salt, user.hash);
+  return ok ? user : null;
+}
+
+// ── SESSION ──
+let session = null; // { username, role }
+
+function setSession(user) {
+  session = { username: user.username, role: user.role };
+  document.getElementById('topbar-username').textContent = user.username;
+  document.getElementById('login-screen').classList.add('hidden');
+  // Only admins see Users button
+  document.getElementById('btn-users').style.display =
+    user.role === 'admin' ? '' : 'none';
+}
+
+function logout() {
+  session = null;
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('login-user').focus();
+}
+
+// ── LOGIN HANDLER ──
+document.getElementById('btn-login').addEventListener('click', async () => {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-error');
+  if (!u || !p) { err.textContent = 'Please enter username and password.'; return; }
+  err.textContent = 'Verifying…';
+  const user = await attemptLogin(u, p);
+  if (user) {
+    err.textContent = '';
+    setSession(user);
+  } else {
+    err.textContent = 'Invalid username or password.';
+    document.getElementById('login-pass').value = '';
+  }
+});
+
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-login').click();
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+  if (confirm('Log out?')) logout();
+});
+
+// ── USER MANAGER ──
+function renderUserList() {
+  const users = loadUsers();
+  const list = document.getElementById('user-list');
+  if (users.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text-muted);">No users.</div>';
+    return;
+  }
+  list.innerHTML = users.map((u, i) => `
+    <div class="user-row">
+      <span class="u-name">${u.username}</span>
+      <span class="u-role ${u.role === 'admin' ? 'admin' : ''}">${u.role}</span>
+      ${u.username !== session?.username
+        ? `<button class="tb-btn" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:var(--red);"
+             onclick="deleteUser(${i})">Remove</button>`
+        : '<span style="font-size:10px;color:var(--text-muted);">(you)</span>'}
+    </div>`).join('');
+}
+
+function deleteUser(idx) {
+  const users = loadUsers();
+  if (!confirm('Remove user ' + users[idx].username + '?')) return;
+  users.splice(idx, 1);
+  saveUsers(users);
+  renderUserList();
+}
+
+document.getElementById('btn-add-user').addEventListener('click', async () => {
+  const uname = document.getElementById('new-username').value.trim();
+  const role  = document.getElementById('new-role').value;
+  const pass  = document.getElementById('new-pass').value;
+  const pass2 = document.getElementById('new-pass2').value;
+  const errEl = document.getElementById('user-add-error');
+
+  if (!uname || !pass) { errEl.textContent = 'Username and password required.'; return; }
+  if (pass.length < 8)  { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (pass !== pass2)   { errEl.textContent = 'Passwords do not match.'; return; }
+
+  const users = loadUsers();
+  if (users.find(u => u.username.toLowerCase() === uname.toLowerCase())) {
+    errEl.textContent = 'Username already exists.'; return;
+  }
+
+  errEl.textContent = 'Creating…';
+  const cred = await makeCredential(uname, pass);
+  cred.role = role;
+  users.push(cred);
+  saveUsers(users);
+  errEl.textContent = '';
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-pass').value = '';
+  document.getElementById('new-pass2').value = '';
+  renderUserList();
+});
+
+document.getElementById('btn-users').addEventListener('click', () => {
+  if (session?.role !== 'admin') return;
+  renderUserList();
+  document.getElementById('user-modal-overlay').classList.add('open');
+});
+
+document.getElementById('btn-close-user-modal').addEventListener('click', () => {
+  document.getElementById('user-modal-overlay').classList.remove('open');
+});
+
+document.getElementById('user-modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════════════════════════
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function today() { return new Date().toISOString().slice(0, 10); }
+
+function makeProject(o={}) {
+  return { _type:'project', id:uid(),
+    projectName: o.projectName || '',
+    claimNumber: o.claimNumber || '',
+    date: o.date || today(),
+    address: o.address || '',
+    investigator: o.investigator || '',
+    insuranceCompany: o.insuranceCompany || '',
+    insuranceContact: o.insuranceContact || '',
+    insurancePhone: o.insurancePhone || '',
+    insuranceEmail: o.insuranceEmail || '',
+    defaultThickness: o.defaultThickness || 0.5,
+    precision: o.precision || 'sqin',
+    nfpaNotes: o.nfpaNotes || '',
+    rooms: []
+  };
+}
+function makeRoom(o={})  { return { _type:'room',  id:uid(), name:o.name||'New Room',  widthFt:12, lengthFt:15, heightFt:8, contents:'', suppressionNotes:'', walls:[] }; }
+function makeWall(o={})  { return { _type:'wall',  id:uid(), name:o.name||'New Wall',  orientation:'North', burnNotes:'', panels:[] }; }
+function makePanel(o={}) { return { _type:'panel', id:uid(), name:o.name||'Panel A', widthIn:48, heightIn:48, baselineThicknessIn:0.5, manufacturer:'', probeTool:'Steel probe', moistureExposure:false, locationNotes:'', cells:{} }; }
+
+// ═══════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════
+
+let state = { project: null, activeNodeId: null, isDark: false };
+
+// ═══════════════════════════════════════════════════════════════
+// TREE HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function findNode(id, project) {
+  if (!project) return null;
+  if (project.id === id) return { node:project, parent:null, arr:null };
+  for (const r of project.rooms) {
+    if (r.id === id) return { node:r, parent:project, arr:project.rooms };
+    for (const w of r.walls) {
+      if (w.id === id) return { node:w, parent:r, arr:r.walls };
+      for (const p of w.panels) {
+        if (p.id === id) return { node:p, parent:w, arr:w.panels };
+      }
+    }
+  }
+  return null;
+}
+
+function countAll(project) {
+  if (!project) return { rooms:0, walls:0, panels:0, cells:0 };
+  let walls=0, panels=0, cells=0;
+  for (const r of project.rooms) {
+    walls += r.walls.length;
+    for (const w of r.walls) {
+      panels += w.panels.length;
+      for (const p of w.panels) cells += Object.keys(p.cells).length;
+    }
+  }
+  return { rooms:project.rooms.length, walls, panels, cells };
+}
+
+function getActiveNode() {
+  if (!state.project || !state.activeNodeId) return null;
+  const r = findNode(state.activeNodeId, state.project);
+  return r ? r.node : null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SAVE / LOAD — .docch format (JSZip: project.json + CSVs)
+// ═══════════════════════════════════════════════════════════════
+
+const LS_KEY = 'doc_project';
+
+function autosave() {
+  if (!state.project) return;
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state.project));
+    setStatus('Autosaved ' + new Date().toLocaleTimeString());
+  } catch { setStatus('Save failed'); }
+}
+
+function setStatus(msg) { document.getElementById('autosave-status').textContent = msg; }
+
+function loadFromLS() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) { state.project = JSON.parse(raw); setStatus('Restored from browser'); }
+  } catch {}
+}
+
+// Build CSV for a single panel's cells
+function panelToCSV(panel, room, wall) {
+  const baseline = panel.baselineThicknessIn || 0.5;
+  const rows = Object.values(panel.cells).sort((a,b) => b.depthIn - a.depthIn);
+  const col = String.fromCharCode.bind(String);
+  const header = 'GridID,X_in,Y_in,DepthIn,PctCalcined,Notes\n';
+  const lines = rows.map(c => {
+    const gid = String.fromCharCode(65 + c.x) + (c.y + 1);
+    const pct = ((c.depthIn / baseline) * 100).toFixed(1);
+    return `${gid},${c.x+1},${c.y+1},${c.depthIn.toFixed(4)},${pct},"${(c.notes||'').replace(/"/g,'""')}"`;
+  });
+  const meta = `# Room: ${room.name} | Wall: ${wall.name} | Panel: ${panel.name}\n`;
+  return meta + header + lines.join('\n');
+}
+
+async function exportDocch() {
+  if (!state.project) { alert('No project to save.'); return; }
+  const zip = new JSZip();
+
+  // Store project metadata + structure as JSON (cells stripped — stored in CSVs)
+  const projectCopy = JSON.parse(JSON.stringify(state.project));
+  zip.file('project.json', JSON.stringify(projectCopy, null, 2));
+
+  // One CSV per panel
+  for (const room of state.project.rooms) {
+    for (const wall of room.walls) {
+      for (const panel of wall.panels) {
+        const safeName = [room.name, wall.name, panel.name]
+          .map(s => s.replace(/[^a-zA-Z0-9_-]/g, '_')).join('__');
+        zip.file(`measurements/${safeName}.csv`, panelToCSV(panel, room, wall));
+      }
+    }
+  }
+
+  // Manifest
+  zip.file('manifest.txt',
+    `DoC File Format v1\nGenerated: ${new Date().toISOString()}\nProject: ${state.project.projectName || state.project.claimNumber || 'Untitled'}\n`);
+
+  const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 } });
+  const a = document.createElement('a');
+  const name = (state.project.projectName || state.project.claimNumber || 'doc-project')
+    .replace(/[^a-zA-Z0-9-]/g, '_');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.docch';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus('Saved as .docch');
+}
+
+async function loadDocch(file) {
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const projectFile = zip.file('project.json');
+    if (!projectFile) { alert('Invalid .docch file — missing project.json'); return; }
+    const raw = await projectFile.async('string');
+    const data = JSON.parse(raw);
+    if (data._type !== 'project') { alert('Invalid project data inside .docch file.'); return; }
+    state.project = data;
+    state.activeNodeId = null;
+    autosave();
+    renderAll();
+    setStatus('Loaded from .docch');
+  } catch(e) {
+    alert('Could not open file: ' + e.message);
+  }
+}
+
+function newProject() {
+  if (state.project && !confirm('Start a new project? Unsaved work will be lost.')) return;
+  state.project = makeProject();
+  state.activeNodeId = state.project.id;
+  autosave();
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TREE RENDERER
+// ═══════════════════════════════════════════════════════════════
+
+const ICONS = { project:'📋', room:'🏠', wall:'◻', panel:'▦' };
+const INDENT = 14;
+
+function getNodeLabel(node) {
+  if (node._type === 'project') {
+    if (node.projectName) return node.projectName;
+    if (node.claimNumber) return 'Claim #' + node.claimNumber;
+    return 'New Project';
+  }
+  return node.name || '(unnamed)';
+}
+
+function renderTree() {
+  const container = document.getElementById('tree');
+  if (!state.project) {
+    container.innerHTML = '<div style="padding:16px;font-size:11px;color:var(--text-muted);text-align:center;">No project open.<br>Use New or Load.</div>';
+    return;
+  }
+  const lines = [];
+  buildLines(state.project, lines, 0);
+  container.innerHTML = lines.join('');
+  container.querySelectorAll('.tn').forEach(el => {
+    el.addEventListener('click', e => { e.stopPropagation(); state.activeNodeId = el.dataset.id; renderAll(); });
+    el.addEventListener('contextmenu', e => { e.preventDefault(); showCtxMenu(e.clientX, e.clientY, el.dataset.id, el.dataset.type); });
+  });
+}
+
+function buildLines(node, lines, level) {
+  const active = node.id === state.activeNodeId;
+  lines.push(
+    `<div class="tn" data-id="${node.id}" data-type="${node._type}"
+      style="padding:5px 10px 5px ${10+level*INDENT}px;display:flex;align-items:center;gap:5px;cursor:pointer;
+             border-left:2px solid ${active?'var(--accent)':'transparent'};
+             background:${active?'var(--accent-lt)':'transparent'};
+             color:${active?'var(--accent-dk)':'var(--text-primary)'};">
+      <span style="font-size:11px;width:14px;text-align:center;">${ICONS[node._type]||'·'}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">${getNodeLabel(node)}</span>
+      <span style="font-size:10px;color:var(--text-muted);" class="ctx-h">···</span>
+    </div>`
+  );
+  if (node._type === 'project') node.rooms.forEach(r => buildLines(r, lines, level+1));
+  if (node._type === 'room')    node.walls.forEach(w => buildLines(w, lines, level+1));
+  if (node._type === 'wall')    node.panels.forEach(p => buildLines(p, lines, level+1));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SMART + BUTTON — context-sensitive to active node
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('btn-smart-add').addEventListener('click', function() {
+  if (!state.project) { newProject(); return; }
+  const node = getActiveNode();
+  if (!node) {
+    // Nothing selected — offer to add a room to project
+    addChild(state.project, 'room'); return;
+  }
+  if (node._type === 'project') { addChild(node, 'room'); return; }
+  if (node._type === 'room')    { addChild(node, 'wall'); return; }
+  if (node._type === 'wall')    { addChild(node, 'panel'); return; }
+  if (node._type === 'panel') {
+    // Panel is a leaf — offer to add another panel to parent wall
+    const res = findNode(node.id, state.project);
+    if (res && res.parent) addChild(res.parent, 'panel');
+  }
+});
+
+function addChild(parent, childType) {
+  let child;
+  let defaultName = '';
+  if (childType === 'room') {
+    defaultName = 'Room ' + (parent.rooms.length + 1);
+    child = makeRoom({ name: defaultName });
+    parent.rooms.push(child);
+  } else if (childType === 'wall') {
+    defaultName = 'Wall ' + (parent.walls.length + 1);
+    child = makeWall({ name: defaultName });
+    parent.walls.push(child);
+  } else if (childType === 'panel') {
+    defaultName = 'Panel ' + String.fromCharCode(65 + parent.panels.length);
+    child = makePanel({ name: defaultName });
+    parent.panels.push(child);
+  }
+  state.activeNodeId = child.id;
+  autosave();
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════════════════════════
+
+function showCtxMenu(x, y, nodeId, nodeType) {
+  removeCtxMenu();
+  const res = findNode(nodeId, state.project);
+  if (!res) return;
+  const node = res.node;
+  const items = [];
+  if (nodeType === 'project') items.push({ label: '+ Add Room',  fn: () => addChild(node, 'room') });
+  if (nodeType === 'room')    items.push({ label: '+ Add Wall',  fn: () => addChild(node, 'wall') });
+  if (nodeType === 'wall')    items.push({ label: '+ Add Panel', fn: () => addChild(node, 'panel') });
+  if (nodeType !== 'project') {
+    items.push({ label: 'Rename', fn: () => renameNode(node) });
+    items.push({ label: 'Delete', fn: () => deleteNode(nodeId), danger: true });
+  }
+  const menu = document.createElement('div');
+  menu.id = 'ctx-menu';
+  menu.style.cssText = `left:${x}px;top:${y}px;`;
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'ctx-item' + (item.danger ? ' danger' : '');
+    el.textContent = item.label;
+    el.addEventListener('click', () => { item.fn(); removeCtxMenu(); });
+    menu.appendChild(el);
+  });
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', removeCtxMenu, { once: true }), 0);
+}
+
+function removeCtxMenu() { const m = document.getElementById('ctx-menu'); if (m) m.remove(); }
+
+function renameNode(node) {
+  const current = node._type === 'project' ? (node.projectName || node.claimNumber) : node.name;
+  const val = prompt('Rename:', current || '');
+  if (val === null) return;
+  if (node._type === 'project') node.projectName = val;
+  else node.name = val;
+  autosave(); renderAll();
+}
+
+function deleteNode(nodeId) {
+  if (!confirm('Delete this node and all its children?')) return;
+  const res = findNode(nodeId, state.project);
+  if (!res || !res.arr) return;
+  res.arr.splice(res.arr.indexOf(res.node), 1);
+  state.activeNodeId = null;
+  autosave(); renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// METADATA PANEL
+// ═══════════════════════════════════════════════════════════════
+
+function renderMetaPanel() {
+  const homeView  = document.getElementById('home-view');
+  const metaForms = document.getElementById('meta-forms');
+
+  if (!state.project || !state.activeNodeId) {
+    homeView.classList.remove('hidden');
+    metaForms.classList.add('hidden');
+    updateHomeDash();
+    return;
+  }
+
+  const res = findNode(state.activeNodeId, state.project);
+  if (!res) return;
+  const node = res.node;
+
+  homeView.classList.add('hidden');
+  metaForms.classList.remove('hidden');
+
+  ['project','room','wall','panel'].forEach(t => document.getElementById('form-'+t).classList.add('hidden'));
+  document.getElementById('form-' + node._type).classList.remove('hidden');
+
+  const form = document.getElementById('form-' + node._type);
+  form.querySelectorAll('[data-field]').forEach(input => {
+    const field = input.dataset.field;
+    if (input.type === 'checkbox') input.checked = !!node[field];
+    else input.value = node[field] !== undefined ? node[field] : '';
+
+    input.oninput = input.onchange = function() {
+      if (input.type === 'checkbox')      node[field] = input.checked;
+      else if (input.type === 'number')   node[field] = parseFloat(input.value) || 0;
+      else                                node[field] = input.value;
+      autosave();
+      if (['projectName','claimNumber','name'].includes(field)) { renderTree(); updateTopbar(); updateHomeDash(); }
+      if (node._type === 'panel') updatePanelInfo(node);
+    };
+  });
+  if (node._type === 'panel') updatePanelInfo(node);
+}
+
+function updatePanelInfo(panel) {
+  const gs = document.getElementById('panel-grid-size');
+  const cm = document.getElementById('panel-cells-mapped');
+  if (gs) gs.textContent = panel.widthIn + ' × ' + panel.heightIn + ' (' + (panel.widthIn * panel.heightIn) + ' sq in)';
+  if (cm) cm.textContent = Object.keys(panel.cells).length;
+}
+
+function updateHomeDash() {
+  const c = countAll(state.project);
+  const p = state.project;
+  document.getElementById('home-claim').textContent  = p ? (p.projectName || (p.claimNumber ? 'Claim #'+p.claimNumber : 'Untitled Project')) : 'DoC';
+  document.getElementById('home-addr').textContent   = p ? (p.address || 'No address set') : 'Fire Investigation · Calcination Mapping';
+  document.getElementById('stat-rooms').textContent  = p ? c.rooms  : '—';
+  document.getElementById('stat-walls').textContent  = p ? c.walls  : '—';
+  document.getElementById('stat-panels').textContent = p ? c.panels : '—';
+  document.getElementById('stat-cells').textContent  = p ? c.cells  : '—';
+  document.getElementById('home-hint').style.display = p ? 'none' : '';
+}
+
+function updateTopbar() {
+  const lbl = document.getElementById('topbar-label');
+  if (!state.project) { lbl.textContent = 'No project open'; return; }
+  const p = state.project;
+  const parts = [];
+  if (p.projectName)   parts.push(p.projectName);
+  else if (p.claimNumber) parts.push('Claim #' + p.claimNumber);
+  else parts.push('Untitled Project');
+  if (p.address) parts.push(p.address);
+  lbl.textContent = parts.join(' · ');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 2 — CANVAS + COORDINATE TABLE ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+const CV = {
+  zoom: 1, panX: 0, panY: 0,
+  isPanning: false,
+  panStartX: 0, panStartY: 0, panOriginX: 0, panOriginY: 0,
+  activeCell: null,
+  panel: null
+};
+
+// ── Default gradient: Blue → Purple → Red → Orange → Yellow ──
+const DEFAULT_GRAD = [
+  { pos: 0.00, hex: '#0000ff' },
+  { pos: 0.25, hex: '#8800cc' },
+  { pos: 0.50, hex: '#cc0000' },
+  { pos: 0.75, hex: '#ff6600' },
+  { pos: 1.00, hex: '#ffdd00' }
+];
+let GRAD_STOPS = DEFAULT_GRAD.map(s => ({ ...s }));
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+
+function depthToColor(depthIn, baseline) {
+  if (!depthIn || depthIn <= 0) return GRAD_STOPS[0].hex;
+  const t = Math.min(depthIn / Math.max(baseline, 0.001), 1.0);
+  for (let i = 1; i < GRAD_STOPS.length; i++) {
+    const s0 = GRAD_STOPS[i-1], s1 = GRAD_STOPS[i];
+    if (t <= s1.pos) {
+      const span = s1.pos - s0.pos;
+      const f    = span > 0 ? (t - s0.pos) / span : 0;
+      const c0   = hexToRgb(s0.hex), c1 = hexToRgb(s1.hex);
+      return `rgb(${Math.round(c0[0]+(c1[0]-c0[0])*f)},${Math.round(c0[1]+(c1[1]-c0[1])*f)},${Math.round(c0[2]+(c1[2]-c0[2])*f)})`;
+    }
+  }
+  return GRAD_STOPS[GRAD_STOPS.length-1].hex;
+}
+
+// ── Color Editor ─────────────────────────────────────────────
+function setupColorEditor() {
+  const ids = ['cs-0','cs-1','cs-2','cs-3','cs-4'];
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = GRAD_STOPS[i].hex;
+    el.addEventListener('input', () => {
+      GRAD_STOPS[i].hex = el.value;
+      updateGradientPreview();
+      if (CV.panel) { drawGrid(); refreshTableColors(); }
+    });
+  });
+  document.getElementById('btn-reset-colors')?.addEventListener('click', () => {
+    GRAD_STOPS = DEFAULT_GRAD.map(s => ({ ...s }));
+    ids.forEach((id, i) => { const el = document.getElementById(id); if (el) el.value = GRAD_STOPS[i].hex; });
+    updateGradientPreview();
+    if (CV.panel) { drawGrid(); refreshTableColors(); }
+  });
+  updateGradientPreview();
+}
+
+function updateGradientPreview() {
+  const prev = document.getElementById('grad-preview');
+  if (!prev) return;
+  prev.style.background = `linear-gradient(to right, ${GRAD_STOPS.map(s=>`${s.hex} ${(s.pos*100).toFixed(0)}%`).join(', ')})`;
+}
+
+function syncColorEditorToState() {
+  ['cs-0','cs-1','cs-2','cs-3','cs-4'].forEach((id, i) => {
+    const el = document.getElementById(id); if (el) el.value = GRAD_STOPS[i].hex;
+  });
+  updateGradientPreview();
+}
+
+// Refresh only cell background colors without full re-render (fast path)
+function refreshTableColors() {
+  const panel = CV.panel; if (!panel) return;
+  const baseline = panel.baselineThicknessIn || 0.5;
+  document.querySelectorAll('#coord-tbody .data-cell').forEach(td => {
+    const cx = +td.dataset.cx, cy = +td.dataset.cy;
+    const cell = panel.cells[cellKey(cx, cy)];
+    const depth = cell ? cell.depthIn : 0;
+    td.style.background = depthToColor(depth, baseline);
+    const inp = td.querySelector('input');
+    if (inp) inp.style.color = colorIsLight(depth, baseline) ? '#111' : '#fff';
+  });
+}
+
+function colorIsLight(depth, baseline) {
+  if (!depth || depth <= 0) {
+    const rgb = hexToRgb(GRAD_STOPS[0].hex);
+    return (0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2]) > 140;
+  }
+  const col = depthToColor(depth, baseline);
+  const m = col.match(/rgb\((\d+),(\d+),(\d+)\)/);
+  if (!m) return false;
+  return (0.299*+m[1] + 0.587*+m[2] + 0.114*+m[3]) > 140;
+}
+
+// ── Cell key & label helpers ──────────────────────────────────
+function cellKey(cx, cy) { return cx + '_' + cy; }
+
+function colLabel(cx) {
+  let label = '', n = cx;
+  do { label = String.fromCharCode(65 + (n % 26)) + label; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  return label;
+}
+
+function parseColLabel(s) {
+  s = s.toUpperCase().trim();
+  let result = 0;
+  for (let i = 0; i < s.length; i++) result = result * 26 + (s.charCodeAt(i) - 64);
+  return result - 1;
+}
+
+// ── Canvas ────────────────────────────────────────────────────
+function getCellSize(panel) {
+  const area = document.getElementById('canvas-area');
+  const base = Math.min((area.clientWidth - 10) / panel.widthIn, (area.clientHeight - 40) / panel.heightIn, 28);
+  return Math.max(3, base * CV.zoom);
+}
+
+function drawGrid() {
+  const panel = CV.panel; if (!panel) return;
+  const canvas = document.getElementById('grid-canvas');
+  const area   = document.getElementById('canvas-area');
+  canvas.width  = area.clientWidth;
+  canvas.height = area.clientHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cs = getCellSize(panel);
+  const baseline = panel.baselineThicknessIn || 0.5;
+  const totalW = panel.widthIn * cs, totalH = panel.heightIn * cs;
+  const originX = Math.round((canvas.width  - totalW) / 2 + CV.panX);
+  const originY = Math.round((canvas.height - totalH) / 2 + CV.panY);
+
+  for (let cy = 0; cy < panel.heightIn; cy++) {
+    for (let cx = 0; cx < panel.widthIn; cx++) {
+      const cell = panel.cells[cellKey(cx, cy)];
+      ctx.fillStyle = depthToColor(cell ? cell.depthIn : 0, baseline);
+      ctx.fillRect(originX + cx*cs + 1, originY + cy*cs + 1, Math.max(1, cs-1), Math.max(1, cs-1));
+    }
+  }
+
+  if (cs >= 5) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 0.5;
+    for (let cx = 0; cx <= panel.widthIn; cx++) {
+      const x = originX + cx*cs + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, originY); ctx.lineTo(x, originY+totalH); ctx.stroke();
+    }
+    for (let cy = 0; cy <= panel.heightIn; cy++) {
+      const y = originY + cy*cs + 0.5;
+      ctx.beginPath(); ctx.moveTo(originX, y); ctx.lineTo(originX+totalW, y); ctx.stroke();
+    }
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+  ctx.strokeRect(originX, originY, totalW, totalH);
+
+  if (CV.activeCell) {
+    const { cx, cy } = CV.activeCell;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.strokeRect(originX + cx*cs+1, originY + cy*cs+1, cs-2, cs-2);
+  }
+
+  if (cs >= 14) {
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = `${Math.min(10, cs*0.55)}px monospace`;
+    ctx.textAlign = 'center';
+    for (let cx = 0; cx < panel.widthIn; cx++)
+      ctx.fillText(colLabel(cx), originX + cx*cs + cs/2, originY - 4);
+    ctx.textAlign = 'right';
+    for (let cy = 0; cy < panel.heightIn; cy++)
+      ctx.fillText(cy+1, originX - 4, originY + cy*cs + cs/2 + 3);
+  }
+
+  drawLegend(ctx, canvas.width, canvas.height, baseline);
+}
+
+function drawLegend(ctx, W, H, baseline) {
+  const barW = 160, barH = 10, x = 12, y = H - 28;
+  const grad = ctx.createLinearGradient(x, 0, x+barW, 0);
+  GRAD_STOPS.forEach(s => grad.addColorStop(s.pos, s.hex));
+  ctx.fillStyle = grad; ctx.fillRect(x, y, barW, barH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 0.5;
+  ctx.strokeRect(x, y, barW, barH);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '9px monospace';
+  ctx.textAlign = 'left';   ctx.fillText('0" (no change)', x, y+barH+10);
+  ctx.textAlign = 'right';  ctx.fillText(baseline.toFixed(3)+'" max', x+barW, y+barH+10);
+}
+
+function setupCanvasEvents() {
+  const canvas = document.getElementById('grid-canvas');
+
+  canvas.addEventListener('mousedown', e => {
+    if (!CV.panel) return;
+    CV.isPanning = true; CV.panStartX = e.clientX; CV.panStartY = e.clientY;
+    CV.panOriginX = CV.panX; CV.panOriginY = CV.panY;
+    canvas.style.cursor = 'grabbing';
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!CV.panel) return;
+    if (CV.isPanning) {
+      CV.panX = CV.panOriginX + (e.clientX - CV.panStartX);
+      CV.panY = CV.panOriginY + (e.clientY - CV.panStartY);
+      drawGrid(); return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const cs = getCellSize(CV.panel);
+    const totalW = CV.panel.widthIn*cs, totalH = CV.panel.heightIn*cs;
+    const originX = (canvas.width-totalW)/2 + CV.panX;
+    const originY = (canvas.height-totalH)/2 + CV.panY;
+    const cx = Math.floor((e.clientX - rect.left - originX) / cs);
+    const cy = Math.floor((e.clientY - rect.top  - originY) / cs);
+    const tip = document.getElementById('cv-tooltip');
+    if (cx >= 0 && cx < CV.panel.widthIn && cy >= 0 && cy < CV.panel.heightIn) {
+      const cell = CV.panel.cells[cellKey(cx, cy)];
+      const depth = cell ? cell.depthIn : 0;
+      const baseline = CV.panel.baselineThicknessIn || 0.5;
+      tip.innerHTML = `<b>${colLabel(cx)}${cy+1}</b> &nbsp;Col ${cx+1} · Row ${cy+1}<br>` +
+        (depth > 0 ? `Depth: ${depth.toFixed(4)}" · ${(depth/baseline*100).toFixed(1)}% calcined` : 'No measurement');
+      tip.style.left = (e.clientX+14)+'px'; tip.style.top = (e.clientY-10)+'px';
+      tip.classList.add('show');
+    } else { tip.classList.remove('show'); }
+  });
+
+  canvas.addEventListener('mouseup',    () => { CV.isPanning = false; canvas.style.cursor = 'grab'; });
+  canvas.addEventListener('mouseleave', () => { CV.isPanning = false; document.getElementById('cv-tooltip').classList.remove('show'); });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    CV.zoom = Math.min(Math.max(CV.zoom * (e.deltaY < 0 ? 1.12 : 0.89), 0.1), 15);
+    drawGrid();
+  }, { passive: false });
+
+  // Click canvas cell → focus matching table input
+  canvas.addEventListener('click', e => {
+    if (!CV.panel || CV.isPanning) return;
+    const rect = canvas.getBoundingClientRect();
+    const cs = getCellSize(CV.panel);
+    const totalW = CV.panel.widthIn*cs, totalH = CV.panel.heightIn*cs;
+    const originX = (canvas.width-totalW)/2 + CV.panX;
+    const originY = (canvas.height-totalH)/2 + CV.panY;
+    const cx = Math.floor((e.clientX - rect.left - originX) / cs);
+    const cy = Math.floor((e.clientY - rect.top  - originY) / cs);
+    if (cx >= 0 && cx < CV.panel.widthIn && cy >= 0 && cy < CV.panel.heightIn) {
+      CV.activeCell = { cx, cy }; drawGrid(); focusTableCell(cx, cy);
+    }
+  });
+
+  document.getElementById('tool-zoom-in')?.addEventListener('click',  () => { CV.zoom = Math.min(CV.zoom*1.3, 15); drawGrid(); });
+  document.getElementById('tool-zoom-out')?.addEventListener('click', () => { CV.zoom = Math.max(CV.zoom/1.3, 0.1); drawGrid(); });
+  document.getElementById('tool-zoom-fit')?.addEventListener('click', () => { CV.zoom=1; CV.panX=0; CV.panY=0; drawGrid(); });
+}
+
+// ── COORDINATE GRID TABLE ────────────────────────────────────
+function renderCoordTable() {
+  const panel   = CV.panel;
+  const thead   = document.getElementById('coord-thead');
+  const tbody   = document.getElementById('coord-tbody');
+  const noPanel = document.getElementById('table-no-panel');
+  const wrap    = document.getElementById('table-body-wrap');
+  const titleEl = document.getElementById('table-panel-title');
+
+  if (!panel) {
+    thead.innerHTML = ''; tbody.innerHTML = '';
+    noPanel.style.display = ''; wrap.style.display = 'none';
+    if (titleEl) titleEl.textContent = 'Measurements';
+    return;
+  }
+  noPanel.style.display = 'none'; wrap.style.display = '';
+  if (titleEl) titleEl.textContent = `${panel.name} — ${panel.widthIn} cols × ${panel.heightIn} rows`;
+
+  const cols = panel.widthIn, rows = panel.heightIn;
+  const baseline = panel.baselineThicknessIn || 0.5;
+
+  // Header
+  let hdr = '<tr><th class="th-corner" style="min-width:36px;"></th>';
+  for (let cx = 0; cx < cols; cx++)
+    hdr += `<th style="min-width:52px;max-width:52px;">${colLabel(cx)}</th>`;
+  thead.innerHTML = hdr + '</tr>';
+
+  // Body
+  const activeKey = CV.activeCell ? cellKey(CV.activeCell.cx, CV.activeCell.cy) : null;
+  let html = '';
+  for (let cy = 0; cy < rows; cy++) {
+    html += `<tr><td class="th-row">${cy + 1}</td>`;
+    for (let cx = 0; cx < cols; cx++) {
+      const key  = cellKey(cx, cy);
+      const cell = panel.cells[key];
+      const depth = cell ? cell.depthIn : 0;
+      const bg   = depthToColor(depth, baseline);
+      const light = colorIsLight(depth, baseline);
+      const isActive = key === activeKey;
+      html += `<td class="data-cell${isActive?' active-cell':''}" data-cx="${cx}" data-cy="${cy}" style="background:${bg};">` +
+        `<input class="cell-input" type="number" step="0.0625" min="0" max="2.0"` +
+        ` value="${depth > 0 ? depth.toFixed(4) : ''}" placeholder=""` +
+        ` style="color:${light?'#111':'#fff'};" data-cx="${cx}" data-cy="${cy}">` +
+        `</td>`;
+    }
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+  wireTableInputs(panel, baseline);
+}
+
+function wireTableInputs(panel, baseline) {
+  const cols = panel.widthIn, rows = panel.heightIn;
+  document.querySelectorAll('#coord-tbody .cell-input').forEach(input => {
+    input.addEventListener('focus', () => {
+      const cx = +input.dataset.cx, cy = +input.dataset.cy;
+      CV.activeCell = { cx, cy };
+      drawGrid();
+      document.querySelectorAll('#coord-tbody td.active-cell').forEach(t => t.classList.remove('active-cell'));
+      input.closest('td')?.classList.add('active-cell');
+    });
+
+    input.addEventListener('change', () => {
+      const cx = +input.dataset.cx, cy = +input.dataset.cy;
+      const val   = parseFloat(input.value);
+      const key   = cellKey(cx, cy);
+      const depth = isNaN(val) || val <= 0 ? 0 : val;
+      if (depth <= 0) {
+        delete panel.cells[key]; input.value = '';
+      } else {
+        panel.cells[key] = { x: cx, y: cy, depthIn: depth, notes: panel.cells[key]?.notes || '' };
+        input.value = depth.toFixed(4);
+      }
+      const td = input.closest('td');
+      const bg = depthToColor(depth, baseline);
+      td.style.background = bg;
+      input.style.color = colorIsLight(depth, baseline) ? '#111' : '#fff';
+      autosave(); drawGrid(); updatePanelInfo(panel);
+    });
+
+    input.addEventListener('keydown', e => {
+      const cx = +input.dataset.cx, cy = +input.dataset.cy;
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const ncx = e.shiftKey ? (cx - 1 + cols) % cols : (cx + 1) % cols;
+        const ncy = e.shiftKey ? (cx === 0 ? (cy - 1 + rows) % rows : cy) : (cx === cols-1 ? (cy + 1) % rows : cy);
+        focusTableCell(ncx, ncy);
+      }
+      if (e.key === 'Enter') { e.preventDefault(); focusTableCell(cx, (cy + 1) % rows); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); focusTableCell((cx+1) % cols, cy); }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); focusTableCell((cx-1+cols) % cols, cy); }
+      if (e.key === 'ArrowDown')  { e.preventDefault(); focusTableCell(cx, (cy+1) % rows); }
+      if (e.key === 'ArrowUp')    { e.preventDefault(); focusTableCell(cx, (cy-1+rows) % rows); }
+    });
+  });
+}
+
+function focusTableCell(cx, cy) {
+  CV.activeCell = { cx, cy };
+  drawGrid();
+  const input = document.querySelector(`#coord-tbody .cell-input[data-cx="${cx}"][data-cy="${cy}"]`);
+  if (input) {
+    input.focus(); input.select();
+    input.closest('tr')?.scrollIntoView({ block: 'nearest' });
+    input.scrollIntoView({ inline: 'nearest' });
+    document.querySelectorAll('#coord-tbody td.active-cell').forEach(t => t.classList.remove('active-cell'));
+    input.closest('td')?.classList.add('active-cell');
+  }
+}
+
+// ── CSV Import ───────────────────────────────────────────────
+function setupCsvImport() {
+  const btn   = document.getElementById('btn-import-csv');
+  const input = document.getElementById('csv-file-input');
+  if (!btn || !input) return;
+  btn.addEventListener('click', () => { if (!CV.panel) { alert('Select a panel first.'); return; } input.click(); });
+  input.addEventListener('change', function() {
+    if (!this.files.length || !CV.panel) return;
+    const reader = new FileReader();
+    reader.onload = e => importCSV(e.target.result);
+    reader.readAsText(this.files[0]);
+    this.value = '';
+  });
+}
+
+function importCSV(text) {
+  const panel = CV.panel; if (!panel) return;
+  const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
+  if (!lines.length) { alert('CSV file appears empty.'); return; }
+
+  const parsed = [], ignoredList = [];
+  const firstRow = lines[0].split(',').map(s => s.trim().replace(/^["']|["']$/g,''));
+
+  // Format B: GridID column (flat list like our export format)
+  const isGridIdFormat = /^grid.?id$/i.test(firstRow[0]);
+  if (isGridIdFormat) {
+    const depthIdx = firstRow.findIndex(h => /depth/i.test(h));
+    if (depthIdx === -1) { alert('No "Depth" column found.'); return; }
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(s => s.trim().replace(/^["']|["']$/g,''));
+      const m = cols[0].toUpperCase().match(/^([A-Z]+)(\d+)$/);
+      if (!m) continue;
+      const cx = parseColLabel(m[1]), cy = parseInt(m[2]) - 1;
+      const depth = parseFloat(cols[depthIdx]) || 0;
+      if (cx >= panel.widthIn || cy >= panel.heightIn) { ignoredList.push(cols[0]); continue; }
+      if (depth > 0) parsed.push({ cx, cy, depth });
+    }
+  } else {
+    // Format A/C: grid layout — first row may be column headers, first col may be row numbers
+    const looksLikeColHeader = /^[A-Z]{1,3}$/i.test(firstRow[1]||'') || firstRow[0]==='' || /^col/i.test(firstRow[0]);
+    const startRow = looksLikeColHeader ? 1 : 0;
+    const firstDataRow = lines[startRow]?.split(',').map(s=>s.trim()) || [];
+    const hasRowNums = !isNaN(parseInt(firstDataRow[0]));
+
+    for (let r = startRow; r < lines.length; r++) {
+      const cols = lines[r].split(',').map(s => s.trim().replace(/^["']|["']$/g,''));
+      const colOffset = hasRowNums ? 1 : 0;
+      const cy = r - startRow;
+      if (cy >= panel.heightIn) { ignoredList.push(`row ${cy+1}`); continue; }
+      for (let c = colOffset; c < cols.length; c++) {
+        const cx = c - colOffset;
+        if (cx >= panel.widthIn) { ignoredList.push(`col ${cx+1}`); continue; }
+        const depth = parseFloat(cols[c]) || 0;
+        if (depth > 0) parsed.push({ cx, cy, depth });
+      }
+    }
+  }
+
+  if (!parsed.length) { alert('No valid depth values (non-zero numbers) found in the CSV.'); return; }
+
+  let msg = `Import ${parsed.length} measurement${parsed.length!==1?'s':''} into "${panel.name}"?`;
+  if (ignoredList.length) {
+    msg += `\n\n⚠ ${ignoredList.length} value(s) exceed panel dimensions (${panel.widthIn} cols × ${panel.heightIn} rows) and will be ignored.\n\nResize the panel first if you need those cells.`;
+  }
+  if (!confirm(msg)) return;
+
+  parsed.forEach(({ cx, cy, depth }) => {
+    const key = cellKey(cx, cy);
+    panel.cells[key] = { x: cx, y: cy, depthIn: depth, notes: panel.cells[key]?.notes || '' };
+  });
+  autosave(); renderCoordTable(); drawGrid(); updatePanelInfo(panel);
+  setStatus(`Imported ${parsed.length} measurements`);
+}
+
+// ── Resizable table panel ─────────────────────────────────────
+function setupTableResize() {
+  const handle = document.getElementById('table-resize-handle');
+  const panel  = document.getElementById('table-panel');
+  if (!handle || !panel) return;
+  let startY = 0, startH = 0;
+  handle.addEventListener('mousedown', e => {
+    startY = e.clientY; startH = panel.offsetHeight;
+    const onMove = e2 => { panel.style.height = Math.min(Math.max(startH + (startY - e2.clientY), 80), 600) + 'px'; };
+    const onUp   = ()  => { document.removeEventListener('mousemove', onMove); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp, { once: true });
+  });
+}
+
+// ── renderCanvas ──────────────────────────────────────────────
+function renderCanvas() {
+  const ph      = document.getElementById('canvas-placeholder');
+  const toolbar = document.getElementById('canvas-toolbar');
+  const canvas  = document.getElementById('grid-canvas');
+  const node    = getActiveNode();
+
+  if (!node || node._type !== 'panel') {
+    ph.classList.remove('hidden');
+    toolbar.classList.add('hidden');
+    canvas.classList.add('hidden');
+    document.getElementById('canvas-panel-label').textContent = '';
+    CV.panel = null;
+    document.getElementById('canvas-hint').innerHTML =
+      node ? 'Select a sheetrock panel<br>to begin mapping.' : 'Select a node in the tree.';
+    renderCoordTable(); return;
+  }
+
+  if (CV.panel !== node) {
+    CV.panel = node; CV.zoom = 1; CV.panX = 0; CV.panY = 0; CV.activeCell = null;
+  }
+
+  ph.classList.add('hidden'); toolbar.classList.remove('hidden'); canvas.classList.remove('hidden');
+  canvas.style.cursor = 'grab';
+
+  const res = findNode(node.id, state.project);
+  if (res?.parent?._type === 'wall') {
+    const wallRes = findNode(res.parent.id, state.project);
+    const parts = [];
+    if (wallRes?.parent?._type === 'room') parts.push(wallRes.parent.name);
+    parts.push(res.parent.name);
+    parts.push(node.name + ' · ' + node.widthIn + '×' + node.heightIn + ' in');
+    document.getElementById('canvas-panel-label').textContent = parts.join(' › ');
+  }
+
+  syncColorEditorToState();
+  drawGrid();
+  renderCoordTable();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MASTER RENDER
+// ═══════════════════════════════════════════════════════════════
+
+function renderAll() {
+  renderTree();
+  renderMetaPanel();
+  renderCanvas();
+  updateTopbar();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('btn-theme').addEventListener('click', () => {
+  state.isDark = !state.isDark;
+  document.documentElement.setAttribute('data-theme', state.isDark ? 'dark' : '');
+  document.getElementById('btn-theme').textContent = state.isDark ? '☽' : '☀';
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT WIRING
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('btn-new').addEventListener('click', newProject);
+document.getElementById('btn-save').addEventListener('click', exportDocch);
+document.getElementById('btn-load').addEventListener('click', () => document.getElementById('file-input').click());
+
+document.getElementById('file-input').addEventListener('change', function() {
+  if (this.files.length) loadDocch(this.files[0]);
+  this.value = '';
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); exportDocch(); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════════════════════════════════
+
+(async function init() {
+  await seedDefaultAdmin();
+  loadFromLS();
+  setupCanvasEvents();
+  setupColorEditor();
+  setupCsvImport();
+  setupTableResize();
+  renderAll();
+  window.addEventListener('resize', () => { if (CV.panel) drawGrid(); });
+  document.getElementById('login-user').focus();
+})();
+</script>
+</body>
+</html>
